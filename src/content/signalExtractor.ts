@@ -4,60 +4,81 @@ export interface JobSignals {
   location: string | null
   postedText: string | null
   applicantCount: number | null
+  exposedFields: {
+    company: boolean
+    location: boolean
+    applicantCount: boolean
+  }
 }
 
-function getMetaLine(): string | null {
-  const candidates = Array.from(
-    document.querySelectorAll<HTMLElement>("span, div")
+function getText(el: Element | null) {
+  return el?.textContent?.trim() || null
+}
+
+function extractApplicantCount(): number | null {
+  const el = document.querySelector(
+    '[aria-label*="people clicked apply"], [aria-label*="applicant"]'
   )
 
-  for (const el of candidates) {
-    const text = el.textContent?.trim()
-    if (!text) continue
+  const label = el?.getAttribute("aria-label")
+  if (!label) return null
 
-    // Typical LinkedIn meta line pattern
+  const match = label.match(/(\d+)/)
+  return match ? Number(match[1]) : null
+}
+function extractMeta(): {
+  location: string | null
+  postedText: string | null
+} {
+  const spans = Array.from(
+    document.querySelectorAll(
+      ".jobs-unified-top-card__primary-description span"
+    )
+  )
+
+  let location = null
+  let postedText = null
+
+  for (const s of spans) {
+    const t = s.textContent?.trim()
+    if (!t) continue
+
+    if (!postedText && /(ago|reposted)/i.test(t)) {
+      postedText = t
+    }
+
     if (
-      text.includes("·") &&
-      (text.toLowerCase().includes("applicant") ||
-       text.toLowerCase().includes("ago"))
+      !location &&
+      /(india|remote|canada|germany|united)/i.test(t)
     ) {
-      return text
+      location = t
     }
   }
 
-  return null
-}
-
-function extractApplicantCount(meta: string | null): number | null {
-  if (!meta) return null
-
-  // Handle "Over 100 applicants"
-  const overMatch = meta.match(/over\s+(\d+)/i)
-  if (overMatch) return Number(overMatch[1])
-
-  // Handle "123 applicants"
-  const exactMatch = meta.match(/(\d+)\s+applicant/i)
-  if (exactMatch) return Number(exactMatch[1])
-
-  return null
+  return { location, postedText }
 }
 
 export function extractJobSignals(): JobSignals {
-  const meta = getMetaLine()
+  const title = document.querySelector("h1")?.textContent?.trim() || null
+
+  const company =
+    document
+      .querySelector('h4 a span, a[href*="/company/"] span')
+      ?.textContent?.trim() || null
+
+  const { location, postedText } = extractMeta()
+  const applicantCount = extractApplicantCount()
 
   return {
-    title: document.querySelector("h1")?.textContent?.trim() || null,
-
-    company:
-      document.querySelector('a[href*="/company/"]')?.textContent?.trim() ||
-      null,
-
-    location: meta ? meta.split("·")[0].trim() : null,
-
-    postedText: meta
-      ? meta.split("·").find(p => p.toLowerCase().includes("ago"))?.trim() || null
-      : null,
-
-    applicantCount: extractApplicantCount(meta)
+    title,
+    company,
+    location,
+    postedText,
+    applicantCount,
+    exposedFields: {
+      company: company !== null,
+      location: location !== null,
+      applicantCount: applicantCount !== null
+    }
   }
 }
