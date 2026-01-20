@@ -13,18 +13,22 @@ window.addEventListener("message", (event) => {
   const jobId = payload?.data?.jobPosting?.entityUrn?.match(/\d+/)?.[0];
 
   if (jobId) {
-    saveJobData(jobId, payload);
-  }
+  console.log("RAW NETWORK PAYLOAD:", payload);
+saveJobData("LAST_PAYLOAD", payload);
+
+}
 });
 
 console.log("[Job Reality Checker] Initialized");
 
 function injectInterceptor() {
   const script = document.createElement("script");
-  script.src = chrome.runtime.getURL("networkInterceptor.js");
+  script.src = chrome.runtime.getURL("dist/networkInterceptor.js");
   script.type = "module";
+  script.onload = () => {
+    script.remove();
+  };
   document.documentElement.appendChild(script);
-  script.remove();
 }
 
 observeJobChanges((jobId) => {
