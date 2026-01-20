@@ -1,5 +1,5 @@
-import { defineConfig } from "vite"
-import { resolve } from "path"
+import { defineConfig } from "vite";
+import { resolve } from "path";
 
 export default defineConfig({
   build: {
@@ -10,13 +10,17 @@ export default defineConfig({
     rollupOptions: {
       input: {
         content: resolve(process.cwd(), "src/content/contentScript.ts"),
-        background: resolve(process.cwd(), "src/background/background.ts")
+        background: resolve(process.cwd(), "src/background/background.ts"),
+        networkInterceptor: resolve(
+          process.cwd(),
+          "src/content/inject/networkInterceptor.ts",
+        ),
       },
       output: {
         format: "es",
         entryFileNames: "[name].js",
-        manualChunks: undefined
-      }
-    }
-  }
-})
+        manualChunks: undefined,
+      },
+    },
+  },
+});
