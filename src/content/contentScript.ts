@@ -1,5 +1,5 @@
 import { captureVisibleJobScreenshot } from "./screenshot";
-import { analyzeJobScreenshot } from "ai/geminiVisionClient";
+import { analyzeJobScreenshot } from "../ai/geminiVisionClient";
 import { scoreJob } from "../analysis/jobScorer";
 import { showJobVerdictOverlay } from "./uiOverlay";
 import type { JobAIResult } from "../types/JobAIResult";

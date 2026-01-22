@@ -3,7 +3,7 @@
   "name": "LinkedIn Job Reality Checker",
   "version": "0.1.0",
   "description": "Analyzes LinkedIn job postings using frontend signals and heuristics.",
-  "permissions": ["storage"],
+  "permissions": ["storage", "tabs", "activeTab"],
   "background": {
     "service_worker": "dist/background.js",
     "type": "module"
