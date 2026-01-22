@@ -1,61 +1,69 @@
-import { observeJobChanges } from "./domObserver";
-import { extractJobSignals } from "./signalExtractor";
-import { saveJobData, getJobData } from "./data/jobStore";
-import { extractFromNetwork } from "./extractor/networkJobExtractor";
+import { captureVisibleJobScreenshot } from "./screenshot";
+import { analyzeJobScreenshot } from "ai/geminiVisionClient";
+import { scoreJob } from "../analysis/jobScorer";
+import { showJobVerdictOverlay } from "./uiOverlay";
+import type { JobAIResult } from "../types/JobAIResult";
 
-injectInterceptor();
+console.log("[Job Reality Checker] Content script loaded");
 
-window.addEventListener("message", (event) => {
-  if (event.source !== window) return;
-  if (event.data?.source !== "LI_JOB_DATA") return;
+let lastUrl = "";
 
-  const payload = event.data.payload;
-  const jobId = payload?.data?.jobPosting?.entityUrn?.match(/\d+/)?.[0];
+/**
+ * Main pipeline:
+ * 1. Capture job screenshot
+ * 2. Send to Gemini Vision
+ * 3. Score job using heuristics
+ * 4. Show explainable overlay
+ */
+async function analyzeCurrentJob() {
+  try {
+    console.log("📸 Capturing job screenshot...");
+    const screenshotBase64 = await captureVisibleJobScreenshot();
 
-  if (jobId) {
-  console.log("RAW NETWORK PAYLOAD:", payload);
-saveJobData("LAST_PAYLOAD", payload);
+    console.log("🤖 Sending screenshot to Gemini Vision...");
+    const aiResult: JobAIResult = await analyzeJobScreenshot(
+      screenshotBase64,
+      "AIzaSyAqvT1HmXcI3DAMdy4nEWUtRSSl0lqyxnE"
+    );
 
+    console.log("🧠 AI Extracted Job Data:", aiResult);
+
+    console.log("📊 Scoring job...");
+    const verdict = scoreJob(aiResult);
+
+    console.log("✅ Final Verdict:", verdict);
+
+    showJobVerdictOverlay(verdict);
+  } catch (error) {
+    console.error("❌ Job analysis failed:", error);
+  }
 }
-});
 
-console.log("[Job Reality Checker] Initialized");
+/**
+ * Detect job changes in SPA navigation
+ * LinkedIn does not reload pages, so we observe URL changes
+ */
+function watchJobChanges() {
+  setInterval(() => {
+    if (window.location.href !== lastUrl) {
+      lastUrl = window.location.href;
 
-function injectInterceptor() {
-  const script = document.createElement("script");
-  script.src = chrome.runtime.getURL("dist/networkInterceptor.js");
-  script.type = "module";
-  script.onload = () => {
-    script.remove();
-  };
-  document.documentElement.appendChild(script);
-}
-
-observeJobChanges((jobId) => {
-  console.log("Job change detected, waiting for DOM stabilization...");
-
-  setTimeout(() => {
-    try {
-      const raw = getJobData(jobId);
-      const signals = raw
-        ? extractFromNetwork(raw)
-        : {
-            title: null,
-            company: null,
-            location: null,
-            postedText: null,
-            applicantCount: null,
-            reposted: false,
-            promoted: false,
-          };
-
-      console.log("Signals (network):", signals);
-
-      console.log("New job detected");
-      console.log("Job ID:", jobId);
-      console.log("Signals:", signals);
-    } catch (err) {
-      console.error("[Job Reality Checker] Signal extraction failed", err);
+      // Only run on job pages
+      if (lastUrl.includes("/jobs/")) {
+        console.log("🔄 Job page changed, re-analyzing...");
+        setTimeout(analyzeCurrentJob, 2000);
+      }
     }
-  }, 800); // critical delay
-});
+  }, 1000);
+}
+
+// Initial run
+setTimeout(() => {
+  lastUrl = window.location.href;
+  if (lastUrl.includes("/jobs/")) {
+    analyzeCurrentJob();
+  }
+}, 2000);
+
+// Watch for SPA navigation
+watchJobChanges();

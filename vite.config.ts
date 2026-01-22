@@ -11,10 +11,6 @@ export default defineConfig({
       input: {
         content: resolve(process.cwd(), "src/content/contentScript.ts"),
         background: resolve(process.cwd(), "src/background/background.ts"),
-        networkInterceptor: resolve(
-          process.cwd(),
-          "src/content/inject/networkInterceptor.ts",
-        ),
       },
       output: {
         format: "es",
